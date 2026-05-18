@@ -8,7 +8,7 @@ const idSchema = z.coerce.number().int().positive()
 const createSchema = z.object({
   parent_id:   z.number().int().positive().nullable().optional(),
   label:       z.string().min(1).max(100),
-  type:        z.enum(['category', 'recipe', 'custom']),
+  type:        z.enum(['category', 'recipe', 'custom', 'featured', 'most_viewed']),
   category_id: z.number().int().positive().nullable().optional(),
   recipe_id:   z.number().int().positive().nullable().optional(),
   url:         z.string().max(2000).nullable().optional(),

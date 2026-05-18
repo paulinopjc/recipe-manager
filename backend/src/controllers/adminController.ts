@@ -3,6 +3,7 @@ import { userService } from '../services/userService'
 import { HttpError } from '../middleware/httpError'
 import { listUsersSchema, createUserSchema, editUserSchema } from '../validators/userValidator'
 import { flattenZodError } from '../utils/flattenZodError'
+import { audit } from '../services/auditService'
 
 export const adminController = {
   async listUsers(req: Request, res: Response, next: NextFunction) {
@@ -34,6 +35,7 @@ export const adminController = {
       }
 
       const user = await userService.create(parsed.data)
+      audit(req.user!.id, 'admin.user_create', { entityType: 'user', entityId: user.id, metadata: { email: user.email, role: user.role }, ip: req.ip })
       res.status(201).json({ data: user })
     } catch (e) {
       next(e)
@@ -48,6 +50,7 @@ export const adminController = {
       }
       const user = await userService.toggleActive(id)
       if (!user) throw new HttpError(404, 'User not found')
+      audit(req.user!.id, 'admin.user_toggle', { entityType: 'user', entityId: id, metadata: { is_active: user.is_active }, ip: req.ip })
       res.json({ data: user })
     } catch (e) {
       next(e)
@@ -76,6 +79,7 @@ export const adminController = {
       }
 
       const user = await userService.update(id, parsed.data)
+      audit(req.user!.id, 'admin.user_edit', { entityType: 'user', entityId: id, metadata: { name: parsed.data.name, email: parsed.data.email, role: parsed.data.role }, ip: req.ip })
       res.json({ data: user })
     } catch (e) {
       next(e)

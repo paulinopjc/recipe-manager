@@ -239,7 +239,7 @@ describe('Recipe endpoints', () => {
     })
   })
 
-  describe('GET /api/v1/public/recipes/:id — no auth', () => {
+  describe('GET /api/v1/public/recipes/:slug — no auth', () => {
     it('returns a public recipe without authentication', async () => {
       const { token } = await createUserAndToken()
 
@@ -249,7 +249,7 @@ describe('Recipe endpoints', () => {
         .send({ ...RECIPE, is_public: true })
 
       const res = await request(app)
-        .get(`/api/v1/public/recipes/${created.body.data.id}`)
+        .get(`/api/v1/public/recipes/${created.body.data.slug}`)
 
       expect(res.status).toBe(200)
       expect(res.body.data.id).toBe(created.body.data.id)
@@ -264,7 +264,7 @@ describe('Recipe endpoints', () => {
         .send(RECIPE)
 
       const res = await request(app)
-        .get(`/api/v1/public/recipes/${created.body.data.id}`)
+        .get(`/api/v1/public/recipes/${created.body.data.slug}`)
 
       expect(res.status).toBe(404)
     })

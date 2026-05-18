@@ -80,10 +80,11 @@ export const updateRecipeSchema = recipeBaseSchema.partial().refine(
 )
 
 export const listFiltersSchema = z.object({
-  q:          z.string().min(1).max(100).optional(),
-  sortBy:     z.enum(RECIPE_SORT_KEYS).optional(),
-  sortOrder:  z.enum(['ASC', 'DESC']).optional(),
-  page:       z.coerce.number().int().positive().optional(),
-  pageSize:   z.coerce.number().int().positive().max(50).optional(),
-  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  q:           z.string().min(1).max(100).optional(),
+  sortBy:      z.enum(RECIPE_SORT_KEYS).optional(),
+  sortOrder:   z.enum(['ASC', 'DESC']).optional(),
+  page:        z.coerce.number().int().positive().optional(),
+  pageSize:    z.coerce.number().int().positive().max(50).optional(),
+  difficulty:  z.enum(['easy', 'medium', 'hard']).optional(),
+  is_featured: z.coerce.boolean().optional(),
 })

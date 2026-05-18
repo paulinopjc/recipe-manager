@@ -73,7 +73,7 @@
         </div>
 
         <!-- Flat ingredients (no sections) -->
-        <template v-if="recipe.sections.length === 0">
+        <template v-if="(recipe.sections ?? []).length === 0">
           <section class="mb-10">
             <h2 class="text-xl font-semibold text-gray-900 mb-4">Ingredients</h2>
             <ul class="space-y-2">
@@ -169,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { publicApi } from '@/api/publicApi'
 import type { Recipe, Ingredient, RecipeSection } from '@/types/recipe'
@@ -187,21 +187,27 @@ const loading     = ref(true)
 const error       = ref<string | null>(null)
 const targetServings = ref(1)
 
-onMounted(async () => {
+async function load(slug: string) {
+  loading.value = true
+  error.value   = null
+  recipe.value  = null
   try {
     const [r, mv] = await Promise.all([
-      publicApi.find(route.params.slug as string),
+      publicApi.find(slug),
       publicApi.mostViewed(6),
     ])
-    recipe.value = r
-    mostViewed.value = mv.filter(r => r.slug !== route.params.slug)
-    targetServings.value = recipe.value.servings ?? 1
+    recipe.value     = r
+    mostViewed.value = mv.filter(m => m.slug !== slug)
+    targetServings.value = r.servings ?? 1
   } catch {
     error.value = 'Recipe not found.'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(() => load(route.params.slug as string))
+watch(() => route.params.slug, slug => { if (slug) load(slug as string) })
 
 function scale(ing: Ingredient): Ingredient {
   const base = recipe.value?.servings

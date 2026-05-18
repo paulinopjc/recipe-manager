@@ -11,6 +11,8 @@ const router = createRouter({
     { path: '/',                            component: () => import('@/views/public/HomeView.vue') },
     { path: '/recipes',                     component: () => import('@/views/public/RecipeListView.vue') },
     { path: '/recipes/category/:slug',      component: () => import('@/views/public/CategoryView.vue') },
+    { path: '/recipes/featured',            component: () => import('@/views/public/FeaturedView.vue') },
+    { path: '/recipes/most-viewed',         component: () => import('@/views/public/MostViewedView.vue') },
     { path: '/recipes/:slug',               component: () => import('@/views/public/RecipeDetailView.vue') },
 
     // ── Backoffice ────────────────────────────────────────────────────────────
@@ -21,7 +23,8 @@ const router = createRouter({
     { path: `${A}/recipes/:id`,       component: () => import('@/views/RecipeDetailView.vue'),  meta: { requiresAuth: true } },
     { path: `${A}/recipes/:id/edit`,  component: () => import('@/views/RecipeEditView.vue'),    meta: { requiresAuth: true } },
     { path: `${A}/categories`,         component: () => import('@/views/categories/CategoriesView.vue'), meta: { requiresAuth: true } },
-    { path: `${A}/nav-items`,          component: () => import('@/views/navItems/NavItemsView.vue'),     meta: { requiresAuth: true } },
+    { path: `${A}/nav-items`,          component: () => import('@/views/navItems/NavItemsView.vue'),                       meta: { requiresAuth: true } },
+    { path: `${A}/homepage-sections`, component: () => import('@/views/homepage/HomepageSpecialsView.vue'), meta: { requiresAuth: true } },
     { path: `${A}/admin/users`,        component: () => import('@/views/admin/UsersView.vue'),   meta: { requiresAuth: true, requiresAdmin: true } },
 
     // Legacy redirect so any old /login bookmark still works

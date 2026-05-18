@@ -87,9 +87,10 @@ export interface UpdateRecipeInput extends Partial<CreateRecipeInput> {}
 
 export interface RecipeFilters {
   q?: string
-  sortBy?: 'title' | 'created_at' | 'ingredients'
+  sortBy?: 'title' | 'created_at' | 'view_count' | 'ingredients'
   sortOrder?: 'ASC' | 'DESC'
   page?: number
   pageSize?: number
   difficulty?: 'easy' | 'medium' | 'hard'
+  is_featured?: boolean
 }

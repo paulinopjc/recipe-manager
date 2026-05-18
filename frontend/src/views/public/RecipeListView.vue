@@ -1,7 +1,7 @@
 <template>
   <PublicLayout>
     <div class="max-w-7xl mx-auto px-[15px] py-12">
-      <h1 class="text-3xl font-bold text-gray-900 mb-6">Recipes</h1>
+      <h1 class="text-3xl font-bold text-gray-900 mb-6">{{ pageTitle }}</h1>
 
       <!-- Category pills -->
       <div v-if="rootCategories.length > 0" class="flex flex-wrap gap-2 mb-6">
@@ -39,6 +39,7 @@
           class="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
           <option value="created_at">Newest</option>
           <option value="title">Title A–Z</option>
+          <option value="view_count">Most Viewed</option>
         </select>
       </div>
 
@@ -72,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { publicApi } from '@/api/publicApi'
 import type { Recipe } from '@/types/recipe'
 import type { Category } from '@/types/category'
@@ -79,9 +81,13 @@ import PublicLayout from '@/components/layout/PublicLayout.vue'
 import RecipeCard from '@/components/public/RecipeCard.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
+const route = useRoute()
+
 const q               = ref('')
-const sortBy          = ref<'title' | 'created_at'>('created_at')
+const sortBy          = ref<'title' | 'created_at' | 'view_count'>('created_at')
+const sortOrder       = ref<'ASC' | 'DESC'>('DESC')
 const difficulty      = ref<'easy' | 'medium' | 'hard' | ''>('')
+const isFeatured      = ref<boolean | undefined>(undefined)
 const recipes         = ref<Recipe[]>([])
 const loading         = ref(false)
 const page            = ref(1)
@@ -92,7 +98,25 @@ const selectedCategory = ref<{ id: number; slug: string; name: string } | null>(
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
+const pageTitle = computed(() => {
+  if (isFeatured.value) return 'Featured Recipes'
+  if (sortBy.value === 'view_count') return 'Most Viewed'
+  return 'Recipes'
+})
+
 onMounted(async () => {
+  // Apply URL query params — used by nav links like ?filter=featured
+  const filter = route.query.filter as string | undefined
+  if (filter === 'featured') {
+    isFeatured.value = true
+  }
+  const qSortBy = route.query.sortBy as string | undefined
+  const qSortOrder = route.query.sortOrder as string | undefined
+  if (qSortBy === 'view_count') {
+    sortBy.value = 'view_count'
+    sortOrder.value = qSortOrder === 'ASC' ? 'ASC' : 'DESC'
+  }
+
   try {
     const tree = await publicApi.categories()
     rootCategories.value = tree.filter(c => !c.is_home)
@@ -104,12 +128,13 @@ async function load() {
   loading.value = true
   try {
     const filters = {
-      q: q.value || undefined,
-      sortBy: sortBy.value,
-      sortOrder: 'DESC' as const,
-      difficulty: difficulty.value || undefined,
-      page: page.value,
-      pageSize: pageSize.value,
+      q:           q.value || undefined,
+      sortBy:      sortBy.value,
+      sortOrder:   sortOrder.value,
+      difficulty:  difficulty.value || undefined,
+      page:        page.value,
+      pageSize:    pageSize.value,
+      is_featured: isFeatured.value,
     }
     if (selectedCategory.value) {
       const result = await publicApi.categoryPage(selectedCategory.value.slug, filters)

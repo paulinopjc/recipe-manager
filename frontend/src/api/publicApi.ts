@@ -29,16 +29,16 @@ export const publicApi = {
     return publicClient.get('/api/v1/public/recipes/featured').then(r => r.data.data)
   },
 
-  mostViewed(limit = 6): Promise<Recipe[]> {
-    return publicClient.get('/api/v1/public/recipes/most-viewed', { params: { limit } }).then(r => r.data.data)
-  },
-
   list(filters?: RecipeFilters): Promise<RecipeListResponse> {
     return publicClient.get('/api/v1/public/recipes', { params: filters }).then(r => r.data)
   },
 
   find(slug: string): Promise<Recipe> {
     return publicClient.get(`/api/v1/public/recipes/${slug}`).then(r => r.data.data)
+  },
+
+  mostViewed(limit = 6): Promise<Recipe[]> {
+    return publicClient.get('/api/v1/public/recipes/most-viewed', { params: { limit } }).then(r => r.data.data)
   },
 
   homepage(): Promise<HomepageSection[]> {

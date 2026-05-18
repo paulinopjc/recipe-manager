@@ -92,4 +92,5 @@ export interface RecipeFilters {
     page?: number
     pageSize?: number
     difficulty?: 'easy' | 'medium' | 'hard'
+    is_featured?: boolean
 }

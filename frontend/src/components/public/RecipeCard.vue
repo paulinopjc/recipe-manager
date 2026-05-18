@@ -1,7 +1,6 @@
 <template>
-  <div @click="router.push(`/recipes/${recipe.slug}`)" role="link" tabindex="0"
-    @keydown.enter="router.push(`/recipes/${recipe.slug}`)"
-    class="block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow group cursor-pointer">
+  <RouterLink :to="`/recipes/${recipe.slug}`"
+    class="block bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow group">
     <!-- Cover image -->
     <div class="relative h-48 bg-gray-100 overflow-hidden">
       <img v-if="recipe.cover_image_url"
@@ -25,8 +24,8 @@
     <div class="p-4">
       <h3 class="font-semibold text-gray-900 truncate">{{ recipe.title }}</h3>
 
-      <!-- Category chips (first 2 + overflow count) -->
-      <div v-if="recipe.categories?.length" class="flex flex-wrap gap-1 mt-1.5" @click.stop>
+      <!-- Category chips (first 2 + overflow count) — stop propagation so they don't double-navigate -->
+      <div v-if="recipe.categories?.length" class="flex flex-wrap gap-1 mt-1.5" @click.prevent.stop>
         <RouterLink
           v-for="cat in recipe.categories.slice(0, 2)"
           :key="cat.id"
@@ -52,16 +51,14 @@
         {{ totalMinutes }} min
       </div>
     </div>
-  </div>
+  </RouterLink>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
 import type { Recipe } from '@/types/recipe'
 
 const props = defineProps<{ recipe: Recipe }>()
-const router = useRouter()
 
 const truncatedDescription = computed(() => {
   const d = props.recipe.description ?? ''

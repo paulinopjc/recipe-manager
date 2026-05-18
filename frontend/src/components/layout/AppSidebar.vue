@@ -23,6 +23,13 @@
         Navigation
       </RouterLink>
       <RouterLink
+        :to="`/${ADMIN_PREFIX}/homepage-sections`"
+        class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+        active-class="bg-indigo-50 text-indigo-700 font-medium"
+      >
+        Homepage Sections
+      </RouterLink>
+      <RouterLink
         v-if="auth.isAdmin"
         :to="`/${ADMIN_PREFIX}/admin/users`"
         class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-100 transition-colors"

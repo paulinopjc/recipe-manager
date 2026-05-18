@@ -1,6 +1,7 @@
 import { pool } from '../db/connection'
 import type { Recipe, CreateRecipeInput, UpdateRecipeInput, RecipeFilters } from '../types/recipe'
 import { RECIPE_SORTABLE_COLUMNS } from '../constants/recipeColumns'
+import { RECIPE_SELECT } from '../constants/recipeSelect'
 
 function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -19,43 +20,6 @@ async function uniqueSlug(client: any, base: string): Promise<string> {
   return `${slug}-${n}`
 }
 
-// Correlated-subquery fetch — avoids cartesian product from dual JOIN
-const RECIPE_SELECT = `
-  SELECT r.*,
-    (
-      SELECT COALESCE(json_agg(i ORDER BY i.position), '[]')
-      FROM ingredients i WHERE i.recipe_id = r.id AND i.section_id IS NULL
-    ) AS ingredients,
-    (
-      SELECT COALESCE(json_agg(inst ORDER BY inst.position), '[]')
-      FROM instructions inst WHERE inst.recipe_id = r.id AND inst.section_id IS NULL
-    ) AS instructions,
-    (
-      SELECT COALESCE(
-        json_agg(
-          json_build_object(
-            'id', s.id,
-            'name', s.name,
-            'position', s.position,
-            'ingredients', (
-              SELECT COALESCE(json_agg(si ORDER BY si.position), '[]')
-              FROM ingredients si WHERE si.section_id = s.id
-            ),
-            'instructions', (
-              SELECT COALESCE(json_agg(sinst ORDER BY sinst.position), '[]')
-              FROM instructions sinst WHERE sinst.section_id = s.id
-            )
-          ) ORDER BY s.position
-        ), '[]'
-      )
-      FROM recipe_sections s WHERE s.recipe_id = r.id
-    ) AS sections,
-    (
-      SELECT COALESCE(json_agg(json_build_object('id',c.id,'name',c.name,'slug',c.slug)), '[]')
-      FROM recipe_categories rc JOIN categories c ON c.id = rc.category_id
-      WHERE rc.recipe_id = r.id
-    ) AS categories
-  FROM recipes r`
 
 async function insertFlatIngredients(client: any, recipeId: number, ingredients: CreateRecipeInput['ingredients']) {
   if (!ingredients) return
@@ -279,13 +243,14 @@ export const recipeService = {
 
   // Public (unauthenticated) queries
   async listPublic(opts?: RecipeFilters): Promise<{ data: Recipe[]; total: number }> {
-    const page       = Math.max(1, Math.floor(opts?.page ?? 1))
-    const pageSize   = Math.min(50, Math.max(1, Math.floor(opts?.pageSize ?? 20)))
-    const offset     = (page - 1) * pageSize
-    const q          = opts?.q?.trim() ?? ''
-    const sortColumn = RECIPE_SORTABLE_COLUMNS[opts?.sortBy ?? 'created_at']
-    const sortOrder  = opts?.sortOrder === 'ASC' ? 'ASC' : 'DESC'
-    const difficulty = opts?.difficulty ?? null
+    const page        = Math.max(1, Math.floor(opts?.page ?? 1))
+    const pageSize    = Math.min(50, Math.max(1, Math.floor(opts?.pageSize ?? 20)))
+    const offset      = (page - 1) * pageSize
+    const q           = opts?.q?.trim() ?? ''
+    const sortColumn  = RECIPE_SORTABLE_COLUMNS[opts?.sortBy ?? 'created_at']
+    const sortOrder   = opts?.sortOrder === 'ASC' ? 'ASC' : 'DESC'
+    const difficulty  = opts?.difficulty ?? null
+    const isFeatured  = opts?.is_featured ?? null
 
     const { rows } = await pool.query(
       `SELECT recipes.*, COUNT(*) OVER() AS total_count,
@@ -296,9 +261,10 @@ export const recipeService = {
        WHERE recipes.is_public = true
          AND ($1 = '' OR recipes.title ILIKE $2 OR recipes.description ILIKE $2)
          AND ($3::text IS NULL OR recipes.difficulty = $3)
+         AND ($4::boolean IS NULL OR recipes.is_featured = $4)
        ORDER BY ${sortColumn} ${sortOrder}
-       LIMIT $4 OFFSET $5`,
-      [q, `%${q}%`, difficulty, pageSize, offset]
+       LIMIT $5 OFFSET $6`,
+      [q, `%${q}%`, difficulty, isFeatured, pageSize, offset]
     )
 
     const total = rows.length > 0 ? Number(rows[0].total_count) : 0
@@ -306,16 +272,10 @@ export const recipeService = {
     return { data, total }
   },
 
-  async listFeatured(): Promise<Recipe[]> {
+  async listFeatured(limit = 12): Promise<Recipe[]> {
     const { rows } = await pool.query(
-      `SELECT *,
-         (SELECT COALESCE(json_agg(json_build_object('id',c.id,'name',c.name,'slug',c.slug)),'[]')
-          FROM recipe_categories rc JOIN categories c ON c.id = rc.category_id
-          WHERE rc.recipe_id = recipes.id) AS categories
-       FROM recipes
-       WHERE is_featured = true AND is_public = true
-       ORDER BY updated_at DESC
-       LIMIT 6`
+      `${RECIPE_SELECT} WHERE r.is_featured = true AND r.is_public = true ORDER BY r.updated_at DESC LIMIT $1`,
+      [limit]
     )
     return rows
   },
@@ -368,14 +328,7 @@ export const recipeService = {
 
   async mostViewed(limit = 6): Promise<Recipe[]> {
     const { rows } = await pool.query(
-      `SELECT *,
-         (SELECT COALESCE(json_agg(json_build_object('id',c.id,'name',c.name,'slug',c.slug)),'[]')
-          FROM recipe_categories rc JOIN categories c ON c.id = rc.category_id
-          WHERE rc.recipe_id = recipes.id) AS categories
-       FROM recipes
-       WHERE is_public = true
-       ORDER BY view_count DESC, updated_at DESC
-       LIMIT $1`,
+      `${RECIPE_SELECT} WHERE r.is_public = true ORDER BY r.view_count DESC, r.updated_at DESC LIMIT $1`,
       [limit]
     )
     return rows

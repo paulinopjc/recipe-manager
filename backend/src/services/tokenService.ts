@@ -6,7 +6,7 @@ export interface TokenPayLoad {
     role: UserRole
 }
 
-const EXPIRES_IN = '7d'
+const EXPIRES_IN = '1d'
 
 function getSecret(): string {
     const secret = process.env.JWT_SECRET

@@ -18,16 +18,17 @@
     <template v-else>
       <section
         v-for="section in sections"
-        :key="section.category.id"
+        :key="section.label"
         class="max-w-7xl mx-auto px-[15px] py-12">
 
         <!-- Section header -->
         <div class="flex items-center justify-between mb-6">
-          <RouterLink :to="`/recipes/category/${section.category.slug}`"
+          <RouterLink v-if="section.view_all_url" :to="section.view_all_url"
             class="text-2xl font-bold text-gray-900 hover:text-indigo-600 transition-colors">
-            {{ section.category.name }}
+            {{ section.label }}
           </RouterLink>
-          <RouterLink :to="`/recipes/category/${section.category.slug}`"
+          <span v-else class="text-2xl font-bold text-gray-900">{{ section.label }}</span>
+          <RouterLink v-if="section.view_all_url" :to="section.view_all_url"
             class="text-sm text-indigo-600 hover:underline">
             View all →
           </RouterLink>

@@ -4,8 +4,10 @@ import type { NavItem, CreateNavItemInput, UpdateNavItemInput } from '../types/n
 const SELECT_FIELDS = `
   n.*,
   CASE
-    WHEN n.type = 'category' THEN '/recipes/category/' || c.slug
-    WHEN n.type = 'recipe'   THEN '/recipes/' || n.recipe_id::text
+    WHEN n.type = 'category'    THEN '/recipes/category/' || c.slug
+    WHEN n.type = 'recipe'      THEN '/recipes/' || n.recipe_id::text
+    WHEN n.type = 'featured'    THEN '/recipes/featured'
+    WHEN n.type = 'most_viewed' THEN '/recipes/most-viewed'
     ELSE n.url
   END AS resolved_url`
 

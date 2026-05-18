@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="$emit('close')">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
       <h2 class="text-lg font-semibold text-gray-900 mb-5">
         {{ initial ? 'Edit nav item' : 'New nav item' }}
       </h2>
@@ -14,6 +14,8 @@
             <option value="category">Category</option>
             <option value="recipe">Recipe</option>
             <option value="custom">Custom URL</option>
+            <option value="featured">Featured Recipes</option>
+            <option value="most_viewed">Most Viewed</option>
           </select>
         </div>
 
@@ -25,6 +27,41 @@
             <option :value="null">— Select category —</option>
             <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
+        </div>
+
+        <!-- Category dropdown children selector -->
+        <div v-if="form.type === 'category' && form.category_id && selectedCategoryChildren.length > 0">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Dropdown children</label>
+          <div class="border border-gray-200 rounded-lg p-3 space-y-2 max-h-56 overflow-y-auto bg-gray-50">
+            <template v-for="child in selectedCategoryChildren" :key="child.id">
+              <!-- Immediate child row -->
+              <div class="flex items-center gap-2">
+                <input type="checkbox" :value="child.id" v-model="selectedChildIds"
+                  class="rounded w-4 h-4 accent-indigo-600 shrink-0" />
+                <span class="flex-1 text-sm text-gray-800 font-medium">{{ child.name }}</span>
+                <div v-if="selectedChildIds.includes(child.id)" class="flex items-center gap-1">
+                  <span class="text-xs text-gray-400">pos</span>
+                  <input v-model.number="childPositions[child.id]" type="number" min="0"
+                    class="w-14 border border-gray-300 rounded px-2 py-0.5 text-xs text-center" />
+                </div>
+              </div>
+              <!-- Grandchildren (children of child) -->
+              <template v-if="child.children && child.children.length > 0">
+                <div v-for="grandchild in child.children" :key="grandchild.id"
+                  class="flex items-center gap-2 pl-5">
+                  <input type="checkbox" :value="grandchild.id" v-model="selectedChildIds"
+                    class="rounded w-4 h-4 accent-indigo-600 shrink-0" />
+                  <span class="flex-1 text-sm text-gray-700">{{ grandchild.name }}</span>
+                  <div v-if="selectedChildIds.includes(grandchild.id)" class="flex items-center gap-1">
+                    <span class="text-xs text-gray-400">pos</span>
+                    <input v-model.number="childPositions[grandchild.id]" type="number" min="0"
+                      class="w-14 border border-gray-300 rounded px-2 py-0.5 text-xs text-center" />
+                  </div>
+                </div>
+              </template>
+            </template>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Checked items appear in the dropdown. Set position for ordering.</p>
         </div>
 
         <!-- Recipe ID -->
@@ -51,8 +88,8 @@
             placeholder="Display text in menu" />
         </div>
 
-        <!-- Parent -->
-        <div>
+        <!-- Parent (only show when no children are being managed via the tree) -->
+        <div v-if="!(form.type === 'category' && selectedCategoryChildren.length > 0)">
           <label class="block text-sm font-medium text-gray-700 mb-1">Parent (dropdown)</label>
           <select v-model="form.parent_id"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -124,25 +161,63 @@ const form = reactive({
   is_active:   props.initial?.is_active ?? true,
 })
 
+// Children selection state (for category type with sub-categories)
+const selectedChildIds = ref<number[]>([])
+const childPositions   = ref<Record<number, number>>({})
+
 // Only top-level items can be parents (no nesting beyond 2 levels)
 const topLevelItems = computed(() =>
   props.allItems.filter(i => i.parent_id === null && i.id !== props.initial?.id)
 )
 
+// Build a map of category id → category with children populated
+const catMap = computed(() => {
+  const map = new Map<number, Category>()
+  for (const c of categories.value) map.set(c.id, { ...c, children: [] })
+  for (const c of categories.value) {
+    if (c.parent_id !== null && map.has(c.parent_id)) {
+      map.get(c.parent_id)!.children!.push(map.get(c.id)!)
+    }
+  }
+  return map
+})
+
+// Immediate children (with their own children nested) of the selected category
+const selectedCategoryChildren = computed(() => {
+  if (!form.category_id) return []
+  return catMap.value.get(form.category_id)?.children ?? []
+})
+
 onMounted(async () => {
   const all = await categoryApi.list()
   categories.value = all.filter(c => !c.is_home && c.is_active)
+
+  // Pre-populate children selection when editing
+  if (props.initial) {
+    const existingChildren = props.allItems.filter(
+      i => i.parent_id === props.initial!.id && i.type === 'category' && i.category_id !== null
+    )
+    selectedChildIds.value = existingChildren.map(c => c.category_id!)
+    existingChildren.forEach(c => { childPositions.value[c.category_id!] = c.position })
+  }
 })
 
 function onTypeChange() {
   form.category_id = null
   form.recipe_id   = null
   form.url         = ''
+  selectedChildIds.value = []
+  childPositions.value = {}
+  if (form.type === 'featured'    && !form.label) form.label = 'Featured Recipes'
+  if (form.type === 'most_viewed' && !form.label) form.label = 'Most Viewed'
 }
 
 function onCategoryChange() {
   const cat = categories.value.find(c => c.id === form.category_id)
   if (cat && !form.label) form.label = cat.name
+  // Reset child selection when category changes
+  selectedChildIds.value = []
+  childPositions.value = {}
 }
 
 async function submit() {
@@ -159,8 +234,52 @@ async function submit() {
       position:    form.position,
       is_active:   form.is_active,
     }
-    if (props.initial) await navItemApi.update(props.initial.id, payload)
-    else               await navItemApi.create(payload)
+
+    let savedId: number
+    if (props.initial) {
+      await navItemApi.update(props.initial.id, payload)
+      savedId = props.initial.id
+    } else {
+      const created = await navItemApi.create(payload)
+      savedId = created.id
+    }
+
+    // Sync category-type children if we're managing a category with children
+    if (form.type === 'category' && selectedCategoryChildren.value.length > 0) {
+      // Find all category-type children currently linked to this nav item
+      const existingChildren = props.allItems.filter(
+        i => i.parent_id === savedId && i.type === 'category' && i.category_id !== null
+      )
+
+      // Create or update selected children
+      for (const catId of selectedChildIds.value) {
+        const pos = childPositions.value[catId] ?? 0
+        const cat = categories.value.find(c => c.id === catId)
+        const existing = existingChildren.find(e => e.category_id === catId)
+        if (existing) {
+          if (existing.position !== pos) {
+            await navItemApi.update(existing.id, { position: pos })
+          }
+        } else {
+          await navItemApi.create({
+            parent_id:   savedId,
+            type:        'category',
+            category_id: catId,
+            label:       cat?.name ?? '',
+            position:    pos,
+            is_active:   true,
+          })
+        }
+      }
+
+      // Remove deselected children
+      for (const existing of existingChildren) {
+        if (!selectedChildIds.value.includes(existing.category_id!)) {
+          await navItemApi.remove(existing.id)
+        }
+      }
+    }
+
     emit('save')
   } catch {
     error.value = 'Failed to save. Please try again.'

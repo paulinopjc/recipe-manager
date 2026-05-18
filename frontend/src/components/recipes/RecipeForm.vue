@@ -72,6 +72,10 @@
         <input v-model="form.is_public" type="checkbox" class="rounded" />
         Public (visible on website)
       </label>
+      <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+        <input v-model="form.is_featured" type="checkbox" class="rounded" />
+        Featured
+      </label>
     </div>
 
     <!-- Categories -->
@@ -227,7 +231,8 @@ const form = reactive({
   cook_minutes:    props.initial?.cook_minutes ?? null,
   cover_image_url: props.initial?.cover_image_url ?? null,
   video_url:       props.initial?.video_url ?? null,
-  is_public:       props.initial?.is_public ?? false,
+  is_public:       props.initial?.is_public   ?? false,
+  is_featured:     props.initial?.is_featured ?? false,
   difficulty:      props.initial?.difficulty ?? null,
 })
 
@@ -342,6 +347,7 @@ function onSubmit() {
     cover_image_url: form.cover_image_url,
     video_url:       form.video_url || null,
     is_public:       form.is_public,
+    is_featured:     form.is_featured,
     difficulty:      form.difficulty,
     category_ids:    [...category_ids.value],
   }

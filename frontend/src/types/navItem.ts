@@ -1,4 +1,4 @@
-export type NavItemType = 'category' | 'recipe' | 'custom'
+export type NavItemType = 'category' | 'recipe' | 'custom' | 'featured' | 'most_viewed'
 
 export interface NavItem {
   id: number

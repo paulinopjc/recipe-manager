@@ -1,6 +1,19 @@
 export const HOMEPAGE_STYLES = ['slider', 'grid'] as const
 export type HomepageStyle = typeof HOMEPAGE_STYLES[number]
 
+export type HomepageSectionType = 'category' | 'featured' | 'most_viewed'
+
+export interface HomepageSpecial {
+  id: number
+  type: 'featured' | 'most_viewed'
+  label: string
+  style: HomepageStyle
+  items: number
+  position: number
+  is_active: boolean
+  updated_at: string
+}
+
 export interface Category {
   id: number
   parent_id: number | null
@@ -43,8 +56,12 @@ export interface CreateCategoryInput {
 export interface UpdateCategoryInput extends Partial<CreateCategoryInput> {}
 
 export interface HomepageSection {
-  category: Category
+  type: HomepageSectionType
+  category?: Category
   recipes: unknown[]
   style: HomepageStyle
   items: number
+  label: string
+  position: number
+  view_all_url?: string
 }

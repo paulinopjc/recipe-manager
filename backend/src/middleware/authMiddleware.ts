@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { tokenService } from '../services/tokenService'
+import { tokenBlocklist } from '../services/tokenBlocklist'
 import { userService } from '../services/userService'
 import { HttpError } from './httpError'
 
@@ -19,6 +20,8 @@ export async function authRequired(req: Request, _res: Response, next: NextFunct
     } catch {
       throw new HttpError(401, 'Invalid or expired token')
     }
+
+    if (tokenBlocklist.has(token)) throw new HttpError(401, 'Token has been revoked')
 
     const user = await userService.find(payload.userId)
     if (!user) throw new HttpError(401, 'User not found')

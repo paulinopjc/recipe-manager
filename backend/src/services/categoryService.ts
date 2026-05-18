@@ -1,6 +1,7 @@
 import { pool } from '../db/connection'
-import type { Category, CreateCategoryInput, UpdateCategoryInput, HomepageSection } from '../types/category'
+import type { Category, CreateCategoryInput, UpdateCategoryInput, HomepageSection, HomepageSpecial } from '../types/category'
 import type { Recipe } from '../types/recipe'
+import { RECIPE_SELECT } from '../constants/recipeSelect'
 
 // Build an ancestor chain for a category (closest ancestor first in reverse)
 async function fetchAncestors(id: number): Promise<{ id: number; name: string; slug: string }[]> {
@@ -145,7 +146,8 @@ export const categoryService = {
     return (result.rowCount ?? 0) > 0
   },
 
-  // Homepage sections — active categories with show_on_homepage=true, each with recipes
+  // Homepage sections — active categories with show_on_homepage=true, each with recipes,
+  // plus any active homepage_specials (featured / most_viewed), all sorted by position.
   async listForHomepage(): Promise<HomepageSection[]> {
     const { rows: cats } = await pool.query<Category>(
       `SELECT * FROM categories
@@ -154,6 +156,7 @@ export const categoryService = {
     )
 
     const sections: HomepageSection[] = []
+
     for (const cat of cats) {
       const limit = cat.homepage_items ?? 6
       const { rows: recipes } = await pool.query<Recipe>(
@@ -178,12 +181,55 @@ export const categoryService = {
         [cat.id, limit]
       )
       sections.push({
+        type: 'category',
         category: cat,
         recipes,
         style: cat.homepage_style,
         items: limit,
+        label: cat.name,
+        position: cat.homepage_position,
+        view_all_url: `/recipes/category/${cat.slug}`,
       })
     }
+
+    // Special sections: featured + most_viewed
+    const { rows: specials } = await pool.query<HomepageSpecial>(
+      `SELECT * FROM homepage_specials WHERE is_active = true ORDER BY position`
+    )
+
+    for (const s of specials) {
+      const limit = s.items
+      let recipes: Recipe[]
+
+      if (s.type === 'featured') {
+        const { rows } = await pool.query<Recipe>(
+          `${RECIPE_SELECT} WHERE r.is_featured = true AND r.is_public = true ORDER BY r.updated_at DESC LIMIT $1`,
+          [limit]
+        )
+        recipes = rows
+      } else {
+        const { rows } = await pool.query<Recipe>(
+          `${RECIPE_SELECT} WHERE r.is_public = true ORDER BY r.view_count DESC, r.updated_at DESC LIMIT $1`,
+          [limit]
+        )
+        recipes = rows
+      }
+
+      sections.push({
+        type: s.type,
+        recipes,
+        style: s.style,
+        items: limit,
+        label: s.label,
+        position: s.position,
+        view_all_url: s.type === 'featured'
+          ? '/recipes/featured'
+          : '/recipes/most-viewed',
+      })
+    }
+
+    // Sort all sections by position
+    sections.sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
     return sections
   },
 
