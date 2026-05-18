@@ -82,6 +82,8 @@ export const navItemService = {
             is_active: true,
             resolved_url: `/recipes/category/${c.slug}`,
             children: [],
+            created_at: '',
+            updated_at: '',
           }))
         }
       }
