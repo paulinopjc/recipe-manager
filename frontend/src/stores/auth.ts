@@ -52,6 +52,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loginWithToken(jwtToken: string): Promise<boolean> {
+    try {
+      localStorage.setItem(TOKEN_KEY, jwtToken)
+      token.value = jwtToken
+      const result = await authApi.me()
+      user.value = result
+      localStorage.setItem(USER_KEY, JSON.stringify(result))
+      return true
+    } catch {
+      clear()
+      return false
+    }
+  }
+
   async function logout(): Promise<void> {
     if (token.value) {
       try { await authApi.logout() } catch { /* ignore */ }
@@ -59,5 +73,5 @@ export const useAuthStore = defineStore('auth', () => {
     clear()
   }
 
-  return { user, token, error, loading, isAuthenticated, isAdmin, loadFromStorage, signInWithGoogle, logout }
+  return { user, token, error, loading, isAuthenticated, isAdmin, loadFromStorage, signInWithGoogle, loginWithToken, logout }
 })

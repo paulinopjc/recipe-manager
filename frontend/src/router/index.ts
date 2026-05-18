@@ -15,6 +15,9 @@ const router = createRouter({
     { path: '/recipes/most-viewed',         component: () => import('@/views/public/MostViewedView.vue') },
     { path: '/recipes/:slug',               component: () => import('@/views/public/RecipeDetailView.vue') },
 
+    // OAuth callback — must be public, outside the backoffice prefix
+    { path: '/auth/callback', component: () => import('@/views/AuthCallbackView.vue') },
+
     // ── Backoffice ────────────────────────────────────────────────────────────
     { path: A,                        redirect: `${A}/recipes` },
     { path: `${A}/login`,             component: () => import('@/views/LoginView.vue'),         meta: { guestOnly: true } },
