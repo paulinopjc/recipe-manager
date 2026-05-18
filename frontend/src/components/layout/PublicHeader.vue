@@ -7,7 +7,8 @@
       </RouterLink>
 
       <!-- Desktop nav -->
-      <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+      <nav class="hidden md:relative md:flex items-center gap-1 text-sm font-medium"
+        @mouseleave="closeDropdown">
         <template v-for="item in navItems" :key="item.id">
           <!-- Simple link (no children) -->
           <component
@@ -20,35 +21,50 @@
             {{ item.label }}
           </component>
 
-          <!-- Dropdown parent -->
-          <div v-else class="relative" @mouseenter="openDropdown(item.id)" @mouseleave="closeDropdown">
+          <!-- Parent trigger — keeps relative so dropdown centers under it -->
+          <div v-else class="relative" @mouseenter="openDropdown(item.id)">
             <component
               :is="item.resolved_url ? (isExternal(item.resolved_url) ? 'a' : RouterLink) : 'button'"
               v-bind="item.resolved_url ? linkProps(item) : {}"
               class="flex items-center gap-1 px-3 py-2 rounded-md text-gray-600 hover:text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+              :class="{ 'text-indigo-700 bg-indigo-50': activeDropdown === item.id }"
               active-class="text-indigo-700"
-              @click="item.resolved_url ? undefined : toggleDropdown(item.id)"
             >
               {{ item.label }}
-              <svg class="w-3.5 h-3.5 transition-transform" :class="{ 'rotate-180': activeDropdown === item.id }"
+              <svg class="w-3 h-3 transition-transform" :class="{ 'rotate-180': activeDropdown === item.id }"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </component>
 
-            <!-- Dropdown panel -->
-            <div v-if="activeDropdown === item.id"
-              class="absolute top-full left-0 mt-1 min-w-[180px] bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
-              <component
-                v-for="child in item.children" :key="child.id"
-                :is="isExternal(child.resolved_url) ? 'a' : RouterLink"
-                v-bind="linkProps(child)"
-                class="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-                active-class="text-indigo-700 bg-indigo-50"
-                @click="closeDropdown"
-              >
-                {{ child.label }}
-              </component>
+            <!-- Dropdown: centered under trigger, right edge clamped to nav -->
+            <div
+              v-if="activeDropdown === item.id"
+              :ref="el => setDropdownRef(el as HTMLElement | null, item.id)"
+              class="absolute top-full bg-white border border-gray-200 rounded-xl shadow-lg z-50 flex gap-6 px-5 py-4"
+              :style="dropdownStyle(item.id)"
+            >
+              <div v-for="child in item.children?.filter(c => c.children?.length)" :key="child.id" class="flex flex-col whitespace-nowrap">
+                <component
+                  :is="child.resolved_url ? (isExternal(child.resolved_url) ? 'a' : RouterLink) : 'span'"
+                  v-bind="child.resolved_url ? linkProps(child) : {}"
+                  class="text-sm font-semibold text-gray-700 hover:text-indigo-700 transition-colors mb-1.5"
+                  active-class="text-indigo-700"
+                  @click="closeDropdown"
+                >
+                  {{ child.label }}
+                </component>
+                <component
+                  v-for="gc in child.children" :key="gc.id"
+                  :is="isExternal(gc.resolved_url) ? 'a' : RouterLink"
+                  v-bind="linkProps(gc)"
+                  class="pl-3 py-0.5 text-sm text-gray-500 hover:text-indigo-700 transition-colors"
+                  active-class="text-indigo-700"
+                  @click="closeDropdown"
+                >
+                  {{ gc.label }}
+                </component>
+              </div>
             </div>
           </div>
         </template>
@@ -79,26 +95,92 @@
     </div>
 
     <!-- Mobile menu -->
-    <div v-if="menuOpen" class="md:hidden border-t border-gray-100 bg-white px-[15px] py-3 flex flex-col gap-1">
+    <div v-if="menuOpen" class="md:hidden border-t border-gray-100 bg-white px-[15px] py-3 flex flex-col gap-0.5 overflow-y-auto max-h-[calc(100vh-4rem)]">
       <template v-if="navItems.length > 0">
         <template v-for="item in navItems" :key="item.id">
+
+          <!-- Level 1: no children — plain link -->
           <component
-            :is="item.resolved_url ? (isExternal(item.resolved_url) ? 'a' : RouterLink) : 'div'"
+            v-if="!item.children?.length"
+            :is="isExternal(item.resolved_url) ? 'a' : RouterLink"
             v-bind="item.resolved_url ? linkProps(item) : {}"
-            class="py-2.5 px-3 text-sm font-medium text-gray-700 hover:text-indigo-700 rounded-md hover:bg-indigo-50"
-            @click="item.resolved_url ? (menuOpen = false) : undefined"
+            class="py-2.5 px-3 text-sm font-medium text-gray-700 hover:text-indigo-700 rounded-md hover:bg-indigo-50 transition-colors"
+            @click="menuOpen = false"
           >
             {{ item.label }}
           </component>
-          <component
-            v-for="child in item.children" :key="child.id"
-            :is="isExternal(child.resolved_url) ? 'a' : RouterLink"
-            v-bind="linkProps(child)"
-            class="py-2 pl-8 pr-3 text-sm text-gray-600 hover:text-indigo-700 rounded-md hover:bg-indigo-50"
-            @click="menuOpen = false"
-          >
-            {{ child.label }}
-          </component>
+
+          <!-- Level 1: has children — name link + toggle -->
+          <div v-else>
+            <div class="flex items-center rounded-md hover:bg-indigo-50 transition-colors">
+              <component
+                :is="item.resolved_url ? (isExternal(item.resolved_url) ? 'a' : RouterLink) : 'span'"
+                v-bind="item.resolved_url ? linkProps(item) : {}"
+                class="flex-1 py-2.5 pl-3 text-sm font-medium text-gray-700 hover:text-indigo-700 transition-colors"
+                @click="item.resolved_url ? (menuOpen = false) : undefined"
+              >
+                {{ item.label }}
+              </component>
+              <button
+                class="px-3 py-2.5 text-gray-400 hover:text-indigo-600 transition-colors text-base leading-none"
+                @click="toggleMobile(item.id)"
+              >
+                {{ mobileOpen.has(item.id) ? '−' : '+' }}
+              </button>
+            </div>
+
+            <!-- Level 2 children -->
+            <div v-if="mobileOpen.has(item.id)" class="flex flex-col gap-0.5 mt-0.5">
+              <template v-for="child in item.children" :key="child.id">
+
+                <!-- Level 2: no children — plain link indented -->
+                <component
+                  v-if="!child.children?.length"
+                  :is="isExternal(child.resolved_url) ? 'a' : RouterLink"
+                  v-bind="child.resolved_url ? linkProps(child) : {}"
+                  class="py-2 pl-7 pr-3 text-sm text-gray-600 hover:text-indigo-700 rounded-md hover:bg-indigo-50 transition-colors"
+                  @click="menuOpen = false"
+                >
+                  {{ child.label }}
+                </component>
+
+                <!-- Level 2: has children — name link + toggle -->
+                <div v-else>
+                  <div class="flex items-center rounded-md hover:bg-indigo-50 transition-colors">
+                    <component
+                      :is="child.resolved_url ? (isExternal(child.resolved_url) ? 'a' : RouterLink) : 'span'"
+                      v-bind="child.resolved_url ? linkProps(child) : {}"
+                      class="flex-1 py-2 pl-7 text-sm text-gray-600 hover:text-indigo-700 transition-colors"
+                      @click="child.resolved_url ? (menuOpen = false) : undefined"
+                    >
+                      {{ child.label }}
+                    </component>
+                    <button
+                      class="px-3 py-2 text-gray-400 hover:text-indigo-600 transition-colors text-base leading-none"
+                      @click="toggleMobile(child.id)"
+                    >
+                      {{ mobileOpen.has(child.id) ? '−' : '+' }}
+                    </button>
+                  </div>
+
+                  <!-- Level 3 grandchildren -->
+                  <div v-if="mobileOpen.has(child.id)" class="flex flex-col gap-0.5 mt-0.5">
+                    <component
+                      v-for="gc in child.children" :key="gc.id"
+                      :is="isExternal(gc.resolved_url) ? 'a' : RouterLink"
+                      v-bind="linkProps(gc)"
+                      class="py-2 pl-12 pr-3 text-sm text-gray-500 hover:text-indigo-700 rounded-md hover:bg-indigo-50 transition-colors"
+                      @click="menuOpen = false"
+                    >
+                      {{ gc.label }}
+                    </component>
+                  </div>
+                </div>
+
+              </template>
+            </div>
+          </div>
+
         </template>
       </template>
       <template v-else>
@@ -114,14 +196,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { publicApi } from '@/api/publicApi'
 import type { NavItem } from '@/types/navItem'
 
-const menuOpen      = ref(false)
-const activeDropdown = ref<number | null>(null)
-const navItems      = ref<NavItem[]>([])
+const menuOpen        = ref(false)
+const activeDropdown  = ref<number | null>(null)
+const navItems        = ref<NavItem[]>([])
+const mobileOpen      = ref(new Set<number>())
+const dropdownRefs    = new Map<number, HTMLElement>()
+const dropdownOffsets = ref<Record<number, string>>({})
 
 onMounted(async () => {
   try { navItems.value = await publicApi.nav() } catch { /* use fallback */ }
@@ -130,13 +215,42 @@ onMounted(async () => {
 onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 function onDocClick(e: MouseEvent) {
-  if (!(e.target as Element).closest('.relative')) closeDropdown()
+  if (!(e.target as Element).closest('header')) closeDropdown()
 }
 
-function openDropdown(id: number)  { activeDropdown.value = id }
-function closeDropdown()           { activeDropdown.value = null }
-function toggleDropdown(id: number) {
-  activeDropdown.value = activeDropdown.value === id ? null : id
+function setDropdownRef(el: HTMLElement | null, itemId: number) {
+  if (el) dropdownRefs.set(itemId, el)
+  else dropdownRefs.delete(itemId)
+}
+
+// Default: centered under trigger via left:50% translateX(-50%).
+// After render, shift left if the right edge overflows past the nav.
+function dropdownStyle(itemId: number) {
+  const offset = dropdownOffsets.value[itemId] ?? '0px'
+  return { left: '50%', transform: `translateX(calc(-50% - ${offset}))` }
+}
+
+async function openDropdown(id: number) {
+  activeDropdown.value = id
+  dropdownOffsets.value = { ...dropdownOffsets.value, [id]: '0px' }
+  await nextTick()
+  const el = dropdownRefs.get(id)
+  if (!el) return
+  const navEl = el.closest('nav')
+  if (!navEl) return
+  const { right: elRight } = el.getBoundingClientRect()
+  const { right: navRight } = navEl.getBoundingClientRect()
+  if (elRight > navRight) {
+    dropdownOffsets.value = { ...dropdownOffsets.value, [id]: `${elRight - navRight}px` }
+  }
+}
+
+function closeDropdown() { activeDropdown.value = null }
+
+function toggleMobile(id: number) {
+  const s = new Set(mobileOpen.value)
+  s.has(id) ? s.delete(id) : s.add(id)
+  mobileOpen.value = s
 }
 
 function isExternal(url: string | null): boolean {

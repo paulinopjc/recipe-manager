@@ -30,7 +30,7 @@
         </div>
 
         <!-- Category dropdown children selector -->
-        <div v-if="form.type === 'category' && form.category_id && selectedCategoryChildren.length > 0">
+        <div v-if="form.type === 'category' && form.category_id && selectedCategoryChildren.length > 0 && form.parent_id === null">
           <label class="block text-sm font-medium text-gray-700 mb-2">Dropdown children</label>
           <div class="border border-gray-200 rounded-lg p-3 space-y-2 max-h-56 overflow-y-auto bg-gray-50">
             <template v-for="child in selectedCategoryChildren" :key="child.id">
@@ -94,7 +94,9 @@
           <select v-model="form.parent_id"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option :value="null">— No parent (top-level) —</option>
-            <option v-for="p in topLevelItems" :key="p.id" :value="p.id">{{ p.label }}</option>
+            <option v-for="p in topLevelItems" :key="p.id" :value="p.id">
+              {{ p.parent_id !== null ? '  · ' : '' }}{{ p.label }}
+            </option>
           </select>
         </div>
 
@@ -165,10 +167,28 @@ const form = reactive({
 const selectedChildIds = ref<number[]>([])
 const childPositions   = ref<Record<number, number>>({})
 
-// Only top-level items can be parents (no nesting beyond 2 levels)
-const topLevelItems = computed(() =>
-  props.allItems.filter(i => i.parent_id === null && i.id !== props.initial?.id)
-)
+// Items that can be parents: top-level and level-2 items (supports 3 levels of nesting)
+// Exclude the item being edited and any of its descendants to avoid cycles
+const topLevelItems = computed(() => {
+  const editId = props.initial?.id
+  const descendantIds = new Set<number>()
+  if (editId !== undefined) {
+    // collect all descendants of the item being edited
+    const queue = [editId]
+    while (queue.length) {
+      const id = queue.shift()!
+      for (const i of props.allItems) {
+        if (i.parent_id === id) { descendantIds.add(i.id); queue.push(i.id) }
+      }
+    }
+  }
+  return props.allItems.filter(i =>
+    i.id !== editId &&
+    !descendantIds.has(i.id) &&
+    // allow top-level and level-2 items (those whose parent is top-level)
+    (i.parent_id === null || props.allItems.find(p => p.id === i.parent_id)?.parent_id === null)
+  )
+})
 
 // Build a map of category id → category with children populated
 const catMap = computed(() => {

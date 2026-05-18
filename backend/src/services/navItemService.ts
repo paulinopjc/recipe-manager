@@ -38,24 +38,57 @@ export const navItemService = {
        WHERE n.is_active = true
        ORDER BY n.parent_id NULLS FIRST, n.position, n.id`
     )
-    // Build nested structure: top-level items with children arrays
-    const parents: NavItem[] = []
-    const childMap = new Map<number, NavItem[]>()
+    // Build arbitrarily-nested tree using a map
+    const byId = new Map<number, NavItem>()
+    for (const row of rows) byId.set(row.id, { ...row, children: [] })
 
-    for (const row of rows) {
-      if (row.parent_id === null) {
-        parents.push({ ...row, children: [] })
+    const roots: NavItem[] = []
+    for (const item of byId.values()) {
+      if (item.parent_id === null) {
+        roots.push(item)
       } else {
-        if (!childMap.has(row.parent_id)) childMap.set(row.parent_id, [])
-        childMap.get(row.parent_id)!.push(row)
+        const parent = byId.get(item.parent_id)
+        if (parent) {
+          parent.children!.push(item)
+        } else {
+          roots.push(item) // orphan — treat as top-level
+        }
       }
     }
 
-    for (const parent of parents) {
-      parent.children = childMap.get(parent.id) ?? []
+    // For category-type nav items with no manually-assigned children,
+    // auto-populate from the category tree
+    const autoPopulate = async (items: NavItem[]) => {
+      for (const item of items) {
+        if (item.children!.length > 0) {
+          await autoPopulate(item.children!)
+        } else if (item.type === 'category' && item.category_id) {
+          const { rows: catChildren } = await pool.query<{
+            id: number; name: string; slug: string
+          }>(
+            `SELECT id, name, slug FROM categories
+             WHERE parent_id = $1 AND is_active = true ORDER BY name`,
+            [item.category_id]
+          )
+          item.children = catChildren.map(c => ({
+            id: -(c.id),
+            parent_id: item.id,
+            label: c.name,
+            type: 'category' as const,
+            category_id: c.id,
+            recipe_id: null,
+            url: null,
+            position: 0,
+            is_active: true,
+            resolved_url: `/recipes/category/${c.slug}`,
+            children: [],
+          }))
+        }
+      }
     }
+    await autoPopulate(roots)
 
-    return parents
+    return roots
   },
 
   async create(input: CreateNavItemInput): Promise<NavItem> {
