@@ -73,6 +73,9 @@
                 <span v-if="r.is_public" class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
                   Public
                 </span>
+                <span v-if="r.is_featured" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">
+                  Featured
+                </span>
               </div>
             </div>
           </RouterLink>
@@ -82,7 +85,7 @@
               class="flex-1 text-center text-xs text-indigo-600 hover:text-indigo-800 py-1 rounded hover:bg-indigo-50 transition-colors">
               Edit
             </RouterLink>
-            <RouterLink :to="`/recipes/${r.id}`" target="_blank"
+            <RouterLink :to="`/recipes/${r.slug}`" target="_blank"
               :class="r.is_public ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-400 hover:text-gray-600'"
               class="flex-1 text-center text-xs py-1 rounded hover:bg-gray-50 transition-colors"
               :title="r.is_public ? 'View on site' : 'Private — not visible on site'">
@@ -124,10 +127,15 @@
                 <span v-else class="text-xs text-gray-300">—</span>
               </td>
               <td class="px-4 py-3 hidden md:table-cell">
-                <span v-if="r.is_public" class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-                  Public
-                </span>
-                <span v-else class="text-xs text-gray-400">Private</span>
+                <div class="flex items-center gap-1 flex-wrap">
+                  <span v-if="r.is_public" class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                    Public
+                  </span>
+                  <span v-else class="text-xs text-gray-400">Private</span>
+                  <span v-if="r.is_featured" class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">
+                    Featured
+                  </span>
+                </div>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-3">
@@ -135,7 +143,7 @@
                     class="text-indigo-600 hover:text-indigo-800 text-xs">
                     Edit
                   </RouterLink>
-                  <RouterLink :to="`/recipes/${r.id}`" target="_blank"
+                  <RouterLink :to="`/recipes/${r.slug}`" target="_blank"
                     :class="r.is_public ? 'text-emerald-600 hover:text-emerald-800' : 'text-gray-400 hover:text-gray-600'"
                     class="text-xs"
                     :title="r.is_public ? 'View on site' : 'Private'">

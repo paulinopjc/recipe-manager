@@ -38,7 +38,7 @@
 
         <!-- View on site -->
         <RouterLink
-          :to="`/recipes/${recipe.id}`"
+          :to="`/recipes/${recipe.slug}`"
           target="_blank"
           :class="recipe.is_public
             ? 'text-emerald-600 hover:text-emerald-800'
