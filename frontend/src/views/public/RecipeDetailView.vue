@@ -22,6 +22,11 @@
               class="text-xs font-medium px-2.5 py-1 rounded-full capitalize">
               {{ recipe.difficulty }}
             </span>
+            <!-- Featured badge -->
+            <span v-if="recipe.is_featured"
+              class="bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full capitalize">
+              Featured
+            </span>
             <!-- Category chips -->
             <RouterLink
               v-for="cat in recipe.categories"
