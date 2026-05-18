@@ -2,6 +2,8 @@
 
 A full-stack recipe management app with a public-facing site and a private backoffice. Users authenticate via Google OAuth and can create, edit, and publish recipes. The public site displays recipes organized by cuisine category with filtering, search, and slug-based URLs.
 
+**Live site:** https://recipe-manager-woad-one.vercel.app
+
 ## Tech Stack
 
 | Layer | Technology |

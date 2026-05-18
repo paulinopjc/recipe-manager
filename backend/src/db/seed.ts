@@ -37,17 +37,30 @@ interface RecipeDef {
   instructions: string[]
 }
 
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
 async function insertRecipe(client: any, userId: number, r: RecipeDef) {
   if (await recipeExists(client, r.title)) {
     console.log(`  skip: ${r.title}`)
     return
   }
   const catId = await getCategoryId(client, r.category_slug)
+  const baseSlug = slugify(r.title)
+  // ensure uniqueness by appending a counter if slug already exists
+  let slug = baseSlug
+  let attempt = 1
+  while (true) {
+    const { rows: existing } = await client.query('SELECT 1 FROM recipes WHERE slug = $1', [slug])
+    if (!existing.length) break
+    slug = `${baseSlug}-${++attempt}`
+  }
   const { rows } = await client.query(
-    `INSERT INTO recipes (user_id, title, description, servings, prep_minutes, cook_minutes,
+    `INSERT INTO recipes (user_id, title, slug, description, servings, prep_minutes, cook_minutes,
        difficulty, is_public, is_featured)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,true,false) RETURNING id`,
-    [userId, r.title, r.description, r.servings, r.prep_minutes, r.cook_minutes, r.difficulty]
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,false) RETURNING id`,
+    [userId, r.title, slug, r.description, r.servings, r.prep_minutes, r.cook_minutes, r.difficulty]
   )
   const recipeId = rows[0].id
   for (let i = 0; i < r.ingredients.length; i++) {
