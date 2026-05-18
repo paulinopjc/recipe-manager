@@ -204,6 +204,7 @@ async function load(slug: string) {
     recipe.value     = r
     mostViewed.value = mv.filter(m => m.slug !== slug)
     targetServings.value = r.servings ?? 1
+    document.title = `${recipe.value?.title} - RecipeBook`
   } catch {
     error.value = 'Recipe not found.'
   } finally {

@@ -147,6 +147,7 @@ async function loadCategory() {
     recipes.value      = res.data
     total.value        = res.total
     page.value         = 1
+    document.title = `${category.value?.name} — RecipeBook`
   } catch {
     error.value = 'Category not found.'
   } finally {

@@ -38,7 +38,7 @@
 
         <!-- View on site -->
         <RouterLink
-          :to="`/recipes/${recipe.slug}`"
+          :to="`/recipes/${recipe.id}`"
           target="_blank"
           :class="recipe.is_public
             ? 'text-emerald-600 hover:text-emerald-800'
@@ -196,7 +196,9 @@ const totalMinutes = computed(() => {
   return prep + cook || null
 })
 
-const canEdit = computed(() => !!recipe.value && auth.isAuthenticated)
+const canEdit = computed(() =>
+  !!recipe.value && (auth.isAdmin || auth.user?.id === recipe.value.user_id)
+)
 
 const difficultyClass = computed(() => ({
   'bg-green-100 text-green-700': recipe.value?.difficulty === 'easy',
