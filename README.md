@@ -25,7 +25,8 @@ A full-stack recipe management app with a public-facing site and a private backo
 **Backoffice** (authenticated users)
 - Recipe CRUD with sectioned ingredients/instructions, category tagging, cover image upload, and visibility control
 - Category tree management (up to 3 levels deep) with homepage section configuration
-- Navigation item manager (category links, recipe links, custom URLs, parent/child hierarchy)
+- Homepage section manager: configure Featured Recipes and Most Viewed sections (style, item count, position)
+- Navigation item manager: category links, recipe links, custom URLs, featured/most-viewed shortcuts, parent/child dropdowns with subcategory selection
 - Admin-only user management: create users, assign roles, enable/disable accounts
 
 ## Architecture
@@ -96,6 +97,12 @@ All authenticated routes require `Authorization: Bearer <token>`.
 ### Navigation — `/api/v1/nav-items` (auth required)
 Standard CRUD: `GET /`, `POST /`, `GET /:id`, `PATCH /:id`, `DELETE /:id`
 
+### Homepage Specials — `/api/v1/homepage-specials` (auth required)
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | List featured and most-viewed section config |
+| PATCH | `/:type` | Update section (type: `featured` or `most_viewed`) |
+
 ### Upload — `/api/v1/upload` (auth required)
 | Method | Path | Description |
 |---|---|---|
@@ -161,7 +168,10 @@ npm run dev            # runs on port 5173
 ## Security
 
 - Passwords are never stored — authentication is Google OAuth only
-- JWTs are short-lived and validated on every request
+- JWTs are short-lived with server-side revocation on logout
+- Rate limiting on authentication and API endpoints
+- HTTP security headers on all responses (via Helmet)
 - Admin endpoints require both authentication and the `admin` role
 - File uploads are validated by MIME type and size before reaching R2
 - Zod validates all incoming request bodies; raw SQL uses parameterized queries throughout
+- Audit log records authentication events and destructive actions with IP and user context
