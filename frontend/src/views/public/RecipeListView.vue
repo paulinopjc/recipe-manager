@@ -106,6 +106,7 @@ const pageTitle = computed(() => {
 
 onMounted(async () => {
   // Apply URL query params — used by nav links like ?filter=featured
+  document.title = 'Recipes — RecipeBook'
   const filter = route.query.filter as string | undefined
   if (filter === 'featured') {
     isFeatured.value = true
